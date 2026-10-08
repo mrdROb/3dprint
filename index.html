@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERMINAL_3D // PRICE_CALC</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #090a0f;
+            --panel-bg: #11141e;
+            --neon-cyan: #00f3ff;
+            --neon-pink: #ff003c;
+            --text-main: #a3b8cc;
+            --grid-color: rgba(0, 243, 255, 0.05);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
+        }
+
+        /* Эффект старого монитора (Scanlines) */
+        body::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .terminal {
+            background: var(--panel-bg);
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2), inset 0 0 15px rgba(0, 243, 255, 0.05);
+            padding: 30px;
+            width: 100%;
+            max-width: 450px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Декоративные углы */
+        .terminal::before, .terminal::after {
+            content: ''; position: absolute; width: 10px; height: 10px; border: 2px solid var(--neon-cyan);
+        }
+        .terminal::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .terminal::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+        .header {
+            text-align: center;
+            color: var(--neon-cyan);
+            border-bottom: 1px dashed var(--neon-cyan);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            text-shadow: 0 0 5px var(--neon-cyan);
+        }
+
+        .header h2 { margin: 0; font-size: 24px; letter-spacing: 2px; }
+        .header span { font-size: 12px; color: var(--neon-pink); }
+
+        .section-title {
+            color: var(--neon-pink);
+            font-size: 14px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+        }
+        .section-title::before {
+            content: '>>';
+            margin-right: 8px;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        input, select {
+            width: 100%;
+            background: transparent;
+            border: 1px solid #334;
+            color: var(--neon-cyan);
+            padding: 10px;
+            font-family: inherit;
+            font-size: 16px;
+            margin-top: 5px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--neon-cyan);
+            box-shadow: inset 0 0 5px rgba(0, 243, 255, 0.3);
+        }
+
+        option {
+            background: var(--panel-bg);
+            color: var(--neon-cyan);
+        }
+
+        .total-block {
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px solid var(--neon-pink);
+            background: rgba(255, 0, 60, 0.05);
+            text-align: center;
+            box-shadow: 0 0 10px rgba(255, 0, 60, 0.2);
+            position: relative;
+        }
+
+        .total-title {
+            font-size: 12px;
+            color: var(--neon-pink);
+            margin-bottom: 5px;
+        }
+
+        .total-price {
+            font-size: 32px;
+            color: #fff;
+            text-shadow: 0 0 10px var(--neon-cyan);
+            font-weight: bold;
+        }
+
+        .currency { color: var(--neon-pink); }
+
+        .note {
+            font-size: 11px;
+            color: #667;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        /* Анимация вспышки при обновлении суммы */
+        @keyframes flash {
+            0% { text-shadow: 0 0 20px #fff, 0 0 30px var(--neon-cyan); color: #fff; }
+            100% { text-shadow: 0 0 10px var(--neon-cyan); color: #fff; }
+        }
+        .flash-active { animation: flash 0.3s ease-out; }
+
+    </style>
+</head>
+<body>
+
+    <div class="terminal">
+        <div class="header">
+            <h2>SYS_PRINT_CALC</h2>
+            <span>[ STATUS: ONLINE // EST: 2026 ]</span>
+        </div>
+
+        <!-- БЛОК 3D ПЕЧАТИ -->
+        <div class="section-title">FDM_PRINT_MODULE</div>
+        
+        <label>Материал (Нить):</label>
+        <select id="tech">
+            <option value="12">PLA / PETG (Стандарт) - 12 ₽/г</option>
+            <option value="15">ABS / ASA (Техничка) - 15 ₽/г</option>
+            <option value="20">TPU (Гибкий / Флекс) - 20 ₽/г</option>
+        </select>
+
+        <label>Вес детали с поддержками (граммы):</label>
+        <input type="number" id="weight" placeholder="0" min="0">
+
+        <label>Постобработка:</label>
+        <select id="postprocess">
+            <option value="0">Только снятие поддержек (+0 ₽)</option>
+            <option value="300">Хим. сглаживание / Ацетон (+300 ₽)</option>
+            <option value="800">Шпатлевка, шлифовка, грунт (+800 ₽)</option>
+        </select>
+
+        <!-- БЛОК 3D ДИЗАЙНА -->
+        <div class="section-title">CAD_DESIGN_MODULE</div>
+
+        <label>Услуга моделирования:</label>
+        <select id="design_type">
+            <option value="0">Не требуется (печатаем готовое)</option>
+            <option value="650">Правка готовой STL модели (650 ₽/час)</option>
+            <option value="1200">CAD-модель по чертежу (1200 ₽/час)</option>
+            <option value="1500">Реверс-инжиниринг по сломанной детали (1500 ₽/час)</option>
+            <option value="2500">Сложный органический скульптинг (2500 ₽/час)</option>
+        </select>
+
+        <label>Оценка времени работы (часы):</label>
+        <input type="number" id="design_hours" placeholder="0" min="0" step="0.5">
+
+        <!-- ИТОГ -->
+        <div class="total-block">
+            <div class="total-title">TOTAL_CREDITS_REQUIRED</div>
+            <div class="total-price" id="totalPrice">0 <span class="currency">₽</span></div>
+        </div>
+        
+        <div class="note">
+            * Мин. заказ на печать: 1000 ₽. Итоговая цена может быть скорректирована оператором.
+        </div>
+    </div>
+
+    <script>
+        // Привязываем события ко всем полям ввода для моментального расчета
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('input', calculate);
+            input.addEventListener('change', calculate);
+        });
+
+        let currentTotal = 0;
+        let animationInterval;
+
+        function calculate() {
+            // Данные печати
+            let pricePerGram = parseFloat(document.getElementById('tech').value) || 0;
+            let weight = parseFloat(document.getElementById('weight').value) || 0;
+            let postProcess = parseFloat(document.getElementById('postprocess').value) || 0;
+            
+            // Данные дизайна
+            let designRate = parseFloat(document.getElementById('design_type').value) || 0;
+            let designHours = parseFloat(document.getElementById('design_hours').value) || 0;
+
+            // Расчет печати
+            let printTotal = 0;
+            if (weight > 0) {
+                printTotal = (pricePerGram * weight) + postProcess;
+                if (printTotal < 1000) printTotal = 1000; // Минималка на печать
+            }
+
+            // Расчет моделирования
+            let designTotal = 0;
+            if (designRate > 0 && designHours > 0) {
+                designTotal = designRate * designHours;
+            }
+
+            let newTotal = printTotal + designTotal;
+
+            // Запускаем анимацию только если сумма изменилась
+            if (newTotal !== currentTotal) {
+                animateHackerNumbers(newTotal);
+                currentTotal = newTotal;
+            }
+        }
+
+        // Киберпанк анимация перебора цифр перед показом реальной суммы
+        function animateHackerNumbers(finalTarget) {
+            const display = document.getElementById('totalPrice');
+            let iterations = 0;
+            clearInterval(animationInterval);
+
+            // Если обнулили форму
+            if (finalTarget === 0) {
+                display.innerHTML = "0 <span class='currency'>₽</span>";
+                return;
+            }
+
+            animationInterval = setInterval(() => {
+                iterations++;
+                // Генерируем случайный набор цифр
+                let glitchNum = Math.floor(Math.random() * 99999);
+                display.innerText = glitchNum + " \u20BD"; // Символ рубля как fallback
+
+                if (iterations > 10) { // Длительность "гличинга"
+                    clearInterval(animationInterval);
+                    display.innerHTML = finalTarget.toLocaleString('ru-RU') + " <span class='currency'>₽</span>";
+                    
+                    // Добавляем класс для вспышки
+                    display.classList.remove('flash-active');
+                    void display.offsetWidth; // Триггер рефлоу для перезапуска анимации
+                    display.classList.add('flash-active');
+                }
+            }, 30); // Скорость перебора кадров
+        }
+    </script>
+</body>
+</html>
